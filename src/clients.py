@@ -11,6 +11,7 @@ import vertexai
 import langdetect
 from llamaapi import LlamaAPI
 from vertexai.preview.generative_models import GenerativeModel, ChatSession
+from vertexai.preview.language_models import TextGenerationModel
 import google.auth
 
 ### Client Manager ###
@@ -62,17 +63,63 @@ class ChatGPTClient(Client):
     def _get_client(self):
         return OpenAI(api_key=self.key)
 
-    def get_response(self, system, user, model="gpt-3.5-turbo", max_tokens=100):
+    def get_response(self, text, complex_word, model="gpt-3.5-turbo", max_tokens=100):
+        
+        system_message = '''
+            
+            ### DESCRIPCIÓN DE LA TAREA ### 
+
+            Quiero que actúes como un anotador de datos para una empresa de aprendizaje automático. Tu tarea es identificar una palabra compleja en una oración y proporcionar 5 alternativas más simples para esa palabra que harían el texto más fácil de leer.
+            Recuerda que el objetivo de estas anotaciones es hacer que el texto sea más accesible para personas con dificultades de comprensión lectora, por lo que tienes que tener en cuenta el contexto en el que se usa la palabra.
+            A continuación, te proporciono una serie de ejemplos para que aprendas lo que tienes que hacer. El input que te llegará será el texto a partir de la línea de entrada y lo que espero es que me devuelvas SOLO el output a partir de "salida", como en los siguientes ejemplos.
+
+            ### EJEMPLOS ### 	
+            Ejemplo 1:
+            Prompt del usuario: 
+                Frase: El rápido zorro marrón salta sobre el perro perezoso.
+                Palabra compleja: salta
+            Salida del sistema:
+                [brinca,bota,rebota,avanza,retoza]
+        
+            Ejemplo 2:
+            Prompt del usuario: 
+                Frase: La tormenta causó un apagón en todo el vecindario.
+                Palabra compleja: apagón
+            Salida del sistema:
+                [corte,oscuridad,interrupción,fallo,apagado]
+
+            Ejemplo 3:
+            Prompt del usuario: 
+                Frase: El niño encontró un tesoro enterrado en la playa.
+                Palabra compleja: enterrado
+            Salida del sistema:
+                [sepultado,oculto,soterrado,escondido,enterrado]
+
+            Ejemplo 4:
+            Prompt del usuario: 
+                Frase: El detective siguió las pistas hasta resolver el caso.
+                Palabra compleja: resolver
+            Salida del sistema:
+                [solucionar,concluir,determinar,decidir,arreglar]
+
+            Asegúrate de que las alternativas estén encapsuladas dentro de corchetes cuadrados, separadas por comas y sin espacios entre las palabras. Esta última parte es muy importante.
+            No debes proporcionar ningún texto adicional. Tu respuesta debe ser SOLO el resultado esperado, el que se encuentra entre corchetes cuadrados. Las alternativas deben estar en español y ser sinónimos de la palabra compleja.
+
+        '''
+        
+        user_message = create_user_prompt(text, complex_word)
+        
+        
         response = self.client.chat.completions.create(
             model=model,
             messages=[
                 {
                     "role": "system",
-                    "content": system,
+                    "content": system_message,
                 },
                 {
                     "role": "user",
-                    "content": user,
+                    "content": user_message,
                 },
             ],
             max_tokens=max_tokens,
@@ -88,11 +135,126 @@ class GeminiClient(Client):
         
         vertexai.init(project=project_id, location=location)
         self.model = GenerativeModel('gemini-1.0-pro')
-        self.chat = self.model.start_chat()
+        self.chat = self.model.start_chat(response_validation=False)
     
-    def get_response(self, system,user):
-        prompt = f'{system}\n Quiero que hagas tu tarea para el siguiente ejemplo:\n{user}'
-        response = self.chat.send_message(prompt)
+    def get_response(self, text,complex_word):
+        
+        prompt = '''
+                    
+            ### DESCRIPCIÓN DE LA TAREA ### 
+
+            Quiero que actúes como un anotador de datos para una empresa de aprendizaje automático. Tu tarea es identificar una palabra compleja en una oración y proporcionar 5 alternativas más simples para esa palabra que harían el texto más fácil de leer.
+            Recuerda que el objetivo de estas anotaciones es hacer que el texto sea más accesible para personas con dificultades de comprensión lectora, por lo que tienes que tener en cuenta el contexto en el que se usa la palabra.
+            A continuación, te proporciono una serie de ejemplos para que aprendas lo que tienes que hacer. El input que te llegará será el texto a partir de la línea de entrada y lo que espero es que me devuelvas SOLO el output a partir de "salida", como en los siguientes ejemplos.
+
+            ### EJEMPLOS ### 	
+            Ejemplo 1:
+            Prompt del usuario: 
+                Frase: El rápido zorro marrón salta sobre el perro perezoso.
+                Palabra compleja: salta
+            Salida del sistema:
+                [brinca,bota,rebota,avanza,retoza]
+        
+            Ejemplo 2:
+            Prompt del usuario: 
+                Frase: La tormenta causó un apagón en todo el vecindario.
+                Palabra compleja: apagón
+            Salida del sistema:
+                [corte,oscuridad,interrupción,fallo,apagado]
+
+            Ejemplo 3:
+            Prompt del usuario: 
+                Frase: El niño encontró un tesoro enterrado en la playa.
+                Palabra compleja: enterrado
+            Salida del sistema:
+                [sepultado,oculto,soterrado,escondido,enterrado]
+
+            Ejemplo 4:
+            Prompt del usuario: 
+                Frase: El detective siguió las pistas hasta resolver el caso.
+                Palabra compleja: resolver
+            Salida del sistema:
+                [solucionar,concluir,determinar,decidir,arreglar]
+
+            Asegúrate de que las alternativas estén encapsuladas dentro de corchetes cuadrados, separadas por comas y sin espacios entre las palabras. Esta última parte es muy importante.
+            No debes proporcionar ningún texto adicional. Tu respuesta debe ser SOLO el resultado esperado, el que se encuentra entre corchetes cuadrados. Las alternativas deben estar en español y ser sinónimos de la palabra compleja.
+            A continuación, vas a recibir el texto y la palabra compleja que debes simplificar.
+            
+            ### TEXTO Y PALABRA COMPLEJAS A SIMPLIFICAR ###
+        ''' + create_user_prompt(text,complex_word)
+        
+        try:
+            response = self.chat.send_message(prompt)
+            return response.text
+        except Exception as e:
+            return ''
+        
+class Palm2Client(Client):
+    
+    def __init__(self):
+        super().__init__()
+        location = 'us-central1'
+        project_id = os.getenv('GOOGLE_PROJECT_ID')
+        
+        vertexai.init(project=project_id, location=location)
+        self.model = TextGenerationModel.from_pretrained('text-bison@001')
+        
+    def get_response(self, text, complex_word):
+        prompt = '''
+                    
+            ### DESCRIPCIÓN DE LA TAREA ### 
+
+            Quiero que actúes como un anotador de datos para una empresa de aprendizaje automático. Tu tarea es identificar una palabra compleja en una oración y proporcionar 5 alternativas más simples para esa palabra que harían el texto más fácil de leer.
+            Recuerda que el objetivo de estas anotaciones es hacer que el texto sea más accesible para personas con dificultades de comprensión lectora, por lo que tienes que tener en cuenta el contexto en el que se usa la palabra.
+            A continuación, te proporciono una serie de ejemplos para que aprendas lo que tienes que hacer. El input que te llegará será el texto a partir de la línea de entrada y lo que espero es que me devuelvas SOLO el output a partir de "salida", como en los siguientes ejemplos.
+
+            ### EJEMPLOS ### 	
+            Ejemplo 1:
+            Prompt del usuario: 
+                Frase: El rápido zorro marrón salta sobre el perro perezoso.
+                Palabra compleja: salta
+            Salida del sistema:
+                [brinca,bota,rebota,avanza,retoza]
+        
+            Ejemplo 2:
+            Prompt del usuario: 
+                Frase: La tormenta causó un apagón en todo el vecindario.
+                Palabra compleja: apagón
+            Salida del sistema:
+                [corte,oscuridad,interrupción,fallo,apagado]
+
+            Ejemplo 3:
+            Prompt del usuario: 
+                Frase: El niño encontró un tesoro enterrado en la playa.
+                Palabra compleja: enterrado
+            Salida del sistema:
+                [sepultado,oculto,soterrado,escondido,enterrado]
+
+            Ejemplo 4:
+            Prompt del usuario: 
+                Frase: El detective siguió las pistas hasta resolver el caso.
+                Palabra compleja: resolver
+            Salida del sistema:
+                [solucionar,concluir,determinar,decidir,arreglar]
+
+            Asegúrate de que las alternativas estén encapsuladas dentro de corchetes cuadrados, separadas por comas y sin espacios entre las palabras. Esta última parte es muy importante.
+            No debes proporcionar ningún texto adicional. Tu respuesta debe ser SOLO el resultado esperado, el que se encuentra entre corchetes cuadrados. Las alternativas deben estar en español y ser sinónimos de la palabra compleja.
+            A continuación, vas a recibir el texto y la palabra compleja que debes simplificar.
+            
+            ### TEXTO Y PALABRA COMPLEJAS A SIMPLIFICAR ###
+        ''' + create_user_prompt(text,complex_word)
+        
+        parameters = {
+            "temperature": 0.2,
+            "max_output_tokens": 256,
+            "top_p": .8,
+            "top_k": 40,
+        }
+        
+        response = self.model.predict(
+            prompt
+        )
+
         return response.text
     
 class LLamaAPIClient(Client): # Client for mixtral-8x7b-instruct, llama-70b-chat, gemma-7b and falcon-40b-instruct
@@ -101,17 +263,60 @@ class LLamaAPIClient(Client): # Client for mixtral-8x7b-instruct, llama-70b-chat
         self.model = model.lower()
         self.client = LlamaAPI(os.getenv('LLAMA_API_KEY'))
         
-    def get_response(self, system,user):
+    def get_response(self, text, complex_word):
+        system = '''
+                    
+            ### DESCRIPCIÓN DE LA TAREA ### 
+
+            Quiero que actúes como un anotador de datos para una empresa de aprendizaje automático. Tu tarea es identificar una palabra compleja en una oración y proporcionar 5 alternativas más simples para esa palabra que harían el texto más fácil de leer.
+            Recuerda que el objetivo de estas anotaciones es hacer que el texto sea más accesible para personas con dificultades de comprensión lectora, por lo que tienes que tener en cuenta el contexto en el que se usa la palabra.
+            A continuación, te proporciono una serie de ejemplos para que aprendas lo que tienes que hacer. El input que te llegará será el texto a partir de la línea de entrada y lo que espero es que me devuelvas SOLO el output a partir de "salida", como en los siguientes ejemplos.
+
+            ### EJEMPLOS ### 	
+            Ejemplo 1:
+            Prompt del usuario: 
+                Frase: El rápido zorro marrón salta sobre el perro perezoso.
+                Palabra compleja: salta
+            Salida del sistema:
+                [brinca,bota,rebota,avanza,retoza]
+        
+            Ejemplo 2:
+            Prompt del usuario: 
+                Frase: La tormenta causó un apagón en todo el vecindario.
+                Palabra compleja: apagón
+            Salida del sistema:
+                [corte,oscuridad,interrupción,fallo,apagado]
+
+            Ejemplo 3:
+            Prompt del usuario: 
+                Frase: El niño encontró un tesoro enterrado en la playa.
+                Palabra compleja: enterrado
+            Salida del sistema:
+                [sepultado,oculto,soterrado,escondido,enterrado]
+
+            Ejemplo 4:
+            Prompt del usuario: 
+                Frase: El detective siguió las pistas hasta resolver el caso.
+                Palabra compleja: resolver
+            Salida del sistema:
+                [solucionar,concluir,determinar,decidir,arreglar]
+
+            Asegúrate de que las alternativas estén encapsuladas dentro de corchetes cuadrados, separadas por comas y sin espacios entre las palabras. Esta última parte es muy importante.
+            No debes proporcionar ningún texto adicional. Tu respuesta debe ser SOLO el resultado esperado, el que se encuentra entre corchetes cuadrados. Las alternativas deben estar en español y ser sinónimos de la palabra compleja.
+            A continuación, vas a recibir el texto y la palabra compleja que debes simplificar.
+        ''' 
+        
+        
         api_request_json = {
             'model': self.model,
             'messages': [
                 {
-                    'role': 'user',
-                    'content': user
+                    'role': 'system',
+                    'content': system   
                 },
                 {
-                    'role': 'system',
-                    'content': system
+                    'role': 'user',
+                    'content': create_user_prompt(text, complex_word)
                 }
             ]
         }
@@ -143,23 +348,12 @@ def parse_outputs(responses:list)->list:
 
 
 def create_user_prompt(text,complex_word):
-    system = '''
-    Eres un muy buen anotador de datos para una empresa de aprendizaje automático. En este momento, estás trabajando en un proyecto que te requiere identificar una palabra compleja en una oración y proporcionar 5 alternativas más simples para esa palabra que harían el texto más fácil de leer.
-    El objetivo de estas anotaciones es hacer que el texto sea más fácil de leer para personas con dificultades de comprensión lectora, así que tenlo en cuenta al sugerir una respuesta.
-    La indicación que proporcionará el usuario sigue la estructura del siguiente ejemplo:
-    Frase: El rápido zorro marrón salta sobre el perro perezoso.
-    Palabra compleja: salta
-    Tu tarea es proporcionar 5 alternativas más simples para la palabra "salta" en la oración, siguiendo el ejemplo a continuación:
-    [brinca,bota,rebota,avanza,retoza]
-    Asegúrate de que las alternativas estén encapsuladas dentro de corchetes cuadrados, separadas por comas y sin espacios entre las palabras. Esta última parte es muy importante.
-    No quiero que me des ningún texto adicional, tu respuesta debe ser SOLO el resultado esperado, el que se encuentra entre corchetes cuadrados. Las alternativas deben estar en español y ser sinónimos de la palabra compleja.
-        '''
-    
-    text_prompt = 'Phrase: ' + text
-    complex_word_prompt = 'Complex word: ' + complex_word
+
+    text_prompt = 'Frase: ' + text
+    complex_word_prompt = 'Palabra compleja: ' + complex_word
     user = text_prompt + '\n' + complex_word_prompt
     
-    return user,system
+    return user
 
 
 def candidate_lists_to_dict(candidate_lists:list)->dict:
