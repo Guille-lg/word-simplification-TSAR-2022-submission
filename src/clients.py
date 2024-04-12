@@ -12,6 +12,7 @@ import langdetect
 from llamaapi import LlamaAPI
 from vertexai.preview.generative_models import GenerativeModel, ChatSession
 from vertexai.preview.language_models import TextGenerationModel
+from google.cloud import aiplatform_v1beta1
 import google.auth
 
 ### Client Manager ###
@@ -256,6 +257,79 @@ class Palm2Client(Client):
         )
 
         return response.text
+    
+class GemmaClient(Client):
+    def __init__(self):
+        super().__init__()
+        # Set the project ID
+        self.project_id = "word-simplification"
+
+        # Set the region
+        self.region = "us-central1"
+        self.endpoint_name = 'google_gemma-7b-it-1712831780451'
+
+        # The AI Platform services require regional API endpoints.
+        client_options = {"api_endpoint": f"{self.region}-aiplatform.googleapis.com"}
+        # Initialize client that will be used to create and send requests.
+        # This client only needs to be created once, and can be reused for multiple requests.
+        client = aiplatform_v1beta1.EndpointServiceClient(client_options=client_options)
+        endpoint = client.endpoint('google_gemma-7b-it-1712831780451')
+        deployed_model_id = endpoint.deployed_models[0].id
+        model_name = endpoint.deployed_models[0].model
+
+        # The format of the resources name is
+        # `projects/{project}/locations/{location}/models/{model}`
+        model_client = aiplatform_v1beta1.ModelServiceClient(client_options=client_options)
+        model = model_client.get_model(name=model_name)
+    
+    def get_response(self, text, complex_word):
+
+        # The AI Platform services require regional API endpoints.
+        client_options = {"api_endpoint": f"{self.region}-aiplatform.googleapis.com"}
+        # Initialize client that will be used to create and send requests.
+        # This client only needs to be created once, and can be reused for multiple requests.
+        client = aiplatform_v1beta1.PredictionServiceClient(client_options=client_options)
+
+        # The format of the endpoint resource name is
+        # `projects/{project}/locations/{location}/endpoints/{endpoint}`
+        endpoint = client.endpoint(self.endpoint_name)
+
+        # The format of the instance schema uri is
+        # `gs://<your-gcs-bucket>/<import_export_path>/<schema_path>`
+        instance_schema_uri = "gs://YOUR_GCS_SOURCE_BUCKET/path_to_your_instance_schema_file"
+
+        # The format of the parameters schema uri is
+        # `gs://<your-gcs-bucket>/<import_export_path>/<schema_path>`
+        parameters_schema_uri = "gs://YOUR_GCS_SOURCE_BUCKET/path_to_your_parameters_schema_file"
+
+        # Read the instance from a file
+        with open("path/to/local/file.json", "rb") as f:
+            instance = json.load(f)
+
+        # Set the parameters
+        parameters_dict = {}
+
+        # Set the instance and parameters
+        instances = [instance]
+        parameters = [parameters_dict]
+
+        # Perform the prediction request
+        response = client.predict(
+            endpoint=endpoint.name,
+            instances=instances,
+            parameters=parameters,
+            instance_schema_uri=instance_schema_uri,
+            parameters_schema_uri=parameters_schema_uri,
+        )
+
+        print("response")
+        print(" deployed_model_id:", response.deployed_model_id)
+
+        # See gs://google-cloud-aiplatform/schema/predict/prediction/text_classification_1.0.0.yaml for the format of the predictions.
+        predictions = response.predictions
+        for prediction in predictions:
+            print(" prediction:", dict(prediction))
+
     
 class LLamaAPIClient(Client): # Client for mixtral-8x7b-instruct, llama-70b-chat, gemma-7b and falcon-40b-instruct
     def __init__(self, model):
