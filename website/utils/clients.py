@@ -437,8 +437,5 @@ def candidate_lists_to_dict(candidate_lists:list)->dict:
             else:
                 candidate_dict[candidate] = 1
                 
-    # Sort the dictionary by the number of ocurrences
-    candidate_dict = dict(sorted(candidate_dict.items(), key=lambda item: item[1], reverse=True))
-                
     return candidate_dict
     

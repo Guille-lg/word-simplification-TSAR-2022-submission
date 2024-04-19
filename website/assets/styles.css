@@ -1,0 +1,50 @@
+
+
+#text_input_container{
+    height: 80vh;
+    display: flex;
+    flex-direction: column;
+    align-content: center;
+    flex-wrap: wrap;
+    justify-content: start;
+    margin-bottom: 15vh;
+}
+#text_output_container{
+    height: 80vh;
+    display: flex;
+    flex-direction: column;
+    align-content: center;
+    align-items: center;
+    flex-wrap: wrap;
+    justify-content: start;
+    margin-bottom: 15vh;
+}
+
+#phrase_input {
+    width: 100vh;
+    margin-bottom: 5vh;
+}
+
+#complex_word_input {
+    width: 100vh;
+}
+
+#simplify_button{
+    margin-top: 10vh;
+}
+
+#simplify_button:hover{
+    border-radius: 30px;
+    transition: 0.5s;
+    transform: translateY(-15px);
+}
+
+#back_button{
+    margin-top: 10vh;
+}
+
+#back_button:hover{
+    border-radius: 30px;
+    transition: 0.5s;
+    transform: translateY(-15px);
+}
