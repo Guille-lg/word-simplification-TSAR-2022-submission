@@ -1,0 +1,14 @@
+Entrega de la asignatura de Minería de Datos, por Guillermo López Gómez.
+
+Índice:
+	- Data: Carpeta con los datos usados y generados en el proyecto. Compuesto por:
+		- candidatos_inferidos: archivo .tsv con el mismo formato que inference_dataset. Contiene la frase compleja y las palabras sugeridas por el modelo.
+		- inference_dataset: el dataset proporcionado en el shared task. Contiene la frase y palabra compleja, además de sustituciones obtenidas de anotadores humanos.
+		- métricas: métricas obtenidas con el script de evaluación.
+	- Src: Carpeta con el código desarrollado durante la práctica. 
+		- website: carpeta con el código de la página web montada para probar el modelo. necesario tener python dash y mantine components en dash para lanzar la página.
+		- clients.py: módulo que contiene los clientes de cada modelo.
+		- output.ipynb: notebook que prepara el dataset de pandas a .tsv para que los datos sean evaluados por tsar_eval.
+		- inference.ipynb: parsea el dataset de entrada y conecta con el módulo de clientes para obtener la inferencia.
+		-tsar_eval.py: script proporcionado por el shared task que calcula las métricas mencionadas en la presentación.
+	- presentacion.pptx: presentación del proyecto en powerpoint
